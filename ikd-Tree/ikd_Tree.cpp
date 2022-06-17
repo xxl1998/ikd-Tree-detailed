@@ -6,6 +6,12 @@ Author: Yixi Cai
 email: yixicai@connect.hku.hk
 */
 
+// wgh 备注：通常，模板类「必须也只能」放在头文件中定义(这样的头文件通常以.hpp做后缀)。
+// wgh 但是，这里却是放在.cpp里定义的，之所以能这样做，是因为作者「在本文件的末尾实例化了模板类」。
+// wgh 这样的做法虽然能编译通过，但不是通常的做法。
+// wgh 如果任何人需要重新实现ikdtree的话，建议修改这一点。
+
+// 
 template <typename PointType>
 KD_TREE<PointType>::KD_TREE(float delete_param, float balance_param, float box_length) {
     delete_criterion_param = delete_param;

@@ -11,17 +11,19 @@
 #include <pcl/point_types.h>
 
 #define EPSS 1e-6
-#define Minimal_Unbalanced_Tree_Size 10
-#define Multi_Thread_Rebuild_Point_Num 1500
+#define Minimal_Unbalanced_Tree_Size 10     // wgh
+#define Multi_Thread_Rebuild_Point_Num 1500 // wgh 需要重置的subtree点数达到此阈值，则用额外线程处理。
 #define DOWNSAMPLE_SWITCH true
-#define ForceRebuildPercentage 0.2
-#define Q_LEN 1000000
+#define ForceRebuildPercentage 0.2          // wgh 
+#define Q_LEN 1000000                       // wgh 支持的最大队列长度
 
 using namespace std;
 
+// wgh 定义ikdtree中的点。
 struct ikdTree_PointType
 {
     float x,y,z;
+    // wgh 为什么这里不用const&做形参？
     ikdTree_PointType (float px = 0.0f, float py = 0.0f, float pz = 0.0f){
         x = px;
         y = py;
@@ -29,15 +31,19 @@ struct ikdTree_PointType
     }
 };
 
+// wgh 定义box（一个box由两个边界点定义）。
 struct BoxPointType{
     float vertex_min[3];
     float vertex_max[3];
 };
 
+// wgh 枚举ikdtree中的所有操作。
 enum operation_set {ADD_POINT, DELETE_POINT, DELETE_BOX, ADD_BOX, DOWNSAMPLE_DELETE, PUSH_DOWN};
 
+// wgh ？
 enum delete_point_storage_set {NOT_RECORD, DELETE_POINTS_REC, MULTI_THREAD_REC};
 
+// wgh 
 template <typename T>
 class MANUAL_Q{
     private:
@@ -54,8 +60,7 @@ class MANUAL_Q{
         int size();
 };
 
-
-
+// wgh 
 template<typename PointType>
 class KD_TREE{
 public:
