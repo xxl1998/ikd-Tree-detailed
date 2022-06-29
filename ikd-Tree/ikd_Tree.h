@@ -66,14 +66,15 @@ class KD_TREE{
 public:
     using PointVector = vector<PointType, Eigen::aligned_allocator<PointType>>;
     using Ptr = shared_ptr<KD_TREE<PointType>>;
+
     struct KD_TREE_NODE{
-        PointType point;
-        uint8_t division_axis;  
-        int TreeSize = 1;
-        int invalid_point_num = 0;
+        PointType point;                            // 数据点
+        uint8_t division_axis;                      // 分割轴
+        int TreeSize = 1;                           // 总节点数
+        int invalid_point_num = 0;                  // label为删除的点的数量
         int down_del_num = 0;
         bool point_deleted = false;
-        bool tree_deleted = false; 
+        bool tree_deleted = false;                  // 整个tree标记为删除
         bool point_downsample_deleted = false;
         bool tree_downsample_deleted = false;
         bool need_push_down_to_left = false;
@@ -81,10 +82,10 @@ public:
         bool working_flag = false;
         float radius_sq;
         pthread_mutex_t push_down_mutex_lock;
-        float node_range_x[2], node_range_y[2], node_range_z[2];   
-        KD_TREE_NODE *left_son_ptr = nullptr;
-        KD_TREE_NODE *right_son_ptr = nullptr;
-        KD_TREE_NODE *father_ptr = nullptr;
+        float node_range_x[2], node_range_y[2], node_range_z[2];    // tree对应的包络Box
+        KD_TREE_NODE *left_son_ptr = nullptr;       // 左子树
+        KD_TREE_NODE *right_son_ptr = nullptr;      // 右子树
+        KD_TREE_NODE *father_ptr = nullptr;         // 父树
         // For paper data record
         float alpha_del;
         float alpha_bal;
@@ -97,6 +98,7 @@ public:
         operation_set op;
     };
 
+    // wgh 在近邻搜索过程中，用于缓存candidates的类型
     struct PointType_CMP{
         PointType point;
         float dist = 0.0;
@@ -109,7 +111,7 @@ public:
             else return dist < a.dist;
         }    
     };
-
+    // wgh 在近邻搜索过程中，用于缓存candidates的数据结构
     class MANUAL_HEAP{
         public:
             MANUAL_HEAP(int max_capacity = 100){
@@ -159,7 +161,7 @@ public:
                 heap[heap_index] = tmp;
                 return;
             }
-            
+            // wgh 冒泡排序算法？
             void FloatUp(int heap_index){
                 int ancestor = (heap_index-1)/2;
                 PointType_CMP tmp = heap[heap_index];
@@ -200,7 +202,7 @@ private:
     float balance_criterion_param = 0.7f;
     float downsample_size = 0.2f;
     bool Delete_Storage_Disabled = false;
-    KD_TREE_NODE * STATIC_ROOT_NODE = nullptr;
+    KD_TREE_NODE * STATIC_ROOT_NODE = nullptr; // wgh `根节点`的`根`，tree结构依存的基础，仅在build或彻底rebuild时改变之。
     PointVector Points_deleted;
     PointVector Downsample_Storage;
     PointVector Multithread_Points_deleted;
@@ -238,7 +240,8 @@ public:
     int validnum();
     void root_alpha(float &alpha_bal, float &alpha_del);
     void Build(PointVector point_cloud);
-    void Nearest_Search(PointType point, int k_nearest, PointVector &Nearest_Points, vector<float> & Point_Distance, double max_dist = INFINITY);
+    void Nearest_Search(PointType point, int k_nearest, PointVector &Nearest_Points, 
+                        vector<float> & Point_Distance, double max_dist = INFINITY);
     void Box_Search(const BoxPointType &Box_of_Point, PointVector &Storage);
     void Radius_Search(PointType point, const float radius, PointVector &Storage);
     int Add_Points(PointVector & PointToAdd, bool downsample_on);
