@@ -425,7 +425,8 @@ void KD_TREE<PointType>::Radius_Search(PointType point, const float radius, Poin
 
 // wgh 关键入口函数
 template <typename PointType>
-int KD_TREE<PointType>::Add_Points(PointVector & PointToAdd, bool downsample_on){
+int KD_TREE<PointType>::Add_Points(PointVector & PointToAdd, bool downsample_on)
+{
     int NewPointSize = PointToAdd.size();   // not used.
     int tree_size = size();                 // not used.
     BoxPointType Box_of_Point;
@@ -558,10 +559,13 @@ void KD_TREE<PointType>::Delete_Points(PointVector & PointToDel){
 template <typename PointType>
 int KD_TREE<PointType>::Delete_Point_Boxes(vector<BoxPointType> & BoxPoints){
     int tmp_counter = 0;
+    // wgh 遍历所有box，逐个删除
     for (int i=0;i < BoxPoints.size();i++){ 
+        // wgh 无并行线程时，直接执行删除
         if (Rebuild_Ptr == nullptr || *Rebuild_Ptr != Root_Node){               
             tmp_counter += Delete_by_range(&Root_Node ,BoxPoints[i], true, false);
         } 
+        // wgh 如果此时有并行的re-balancing线程，需要通过锁(互斥量)访问
         else {
             Operation_Logger_Type operation;
             operation.boxpoint = BoxPoints[i];
@@ -675,15 +679,27 @@ void KD_TREE<PointType>::Rebuild(KD_TREE_NODE ** root){
 
 // wgh 工具属性，从根节点开始向下递归搜索，删除（仅标记）所有被Box包含的节点。
 template <typename PointType>
-int KD_TREE<PointType>::Delete_by_range(KD_TREE_NODE ** root,  BoxPointType boxpoint, bool allow_rebuild, bool is_downsample){   
+int KD_TREE<PointType>::Delete_by_range(KD_TREE_NODE ** root,  BoxPointType boxpoint, 
+                                        bool allow_rebuild, bool is_downsample)
+{
     if ((*root) == nullptr || (*root)->tree_deleted) return 0;
     (*root)->working_flag = true;
-    Push_Down(*root);
+    Push_Down(*root);// wgh 向下更新信息。
+
     int tmp_counter = 0;
+    // wgh 当且仅当两个空间有交叉时，才有继续的必要。
     if (boxpoint.vertex_max[0] <= (*root)->node_range_x[0] || boxpoint.vertex_min[0] > (*root)->node_range_x[1]) return 0;
     if (boxpoint.vertex_max[1] <= (*root)->node_range_y[0] || boxpoint.vertex_min[1] > (*root)->node_range_y[1]) return 0;
     if (boxpoint.vertex_max[2] <= (*root)->node_range_z[0] || boxpoint.vertex_min[2] > (*root)->node_range_z[1]) return 0;
-    if (boxpoint.vertex_min[0] <= (*root)->node_range_x[0] && boxpoint.vertex_max[0] > (*root)->node_range_x[1] && boxpoint.vertex_min[1] <= (*root)->node_range_y[0] && boxpoint.vertex_max[1] > (*root)->node_range_y[1] && boxpoint.vertex_min[2] <= (*root)->node_range_z[0] && boxpoint.vertex_max[2] > (*root)->node_range_z[1]){
+
+    // wgh 当Box完全包含了节点所张成的空间时，把该节点subtree上的所有点标记删除。
+    if (boxpoint.vertex_min[0] <= (*root)->node_range_x[0] && 
+        boxpoint.vertex_max[0] > (*root)->node_range_x[1] && 
+        boxpoint.vertex_min[1] <= (*root)->node_range_y[0] && 
+        boxpoint.vertex_max[1] > (*root)->node_range_y[1] && 
+        boxpoint.vertex_min[2] <= (*root)->node_range_z[0] && 
+        boxpoint.vertex_max[2] > (*root)->node_range_z[1])
+    {
         (*root)->tree_deleted = true;
         (*root)->point_deleted = true;
         (*root)->need_push_down_to_left = true;
@@ -697,19 +713,33 @@ int KD_TREE<PointType>::Delete_by_range(KD_TREE_NODE ** root,  BoxPointType boxp
         }
         return tmp_counter;
     }
-    if (!(*root)->point_deleted && boxpoint.vertex_min[0] <= (*root)->point.x && boxpoint.vertex_max[0] > (*root)->point.x && boxpoint.vertex_min[1] <= (*root)->point.y && boxpoint.vertex_max[1] > (*root)->point.y && boxpoint.vertex_min[2] <= (*root)->point.z && boxpoint.vertex_max[2] > (*root)->point.z){
+
+    // wgh 如果当前节点的point被Box包含，标记删除该point。
+    if (!(*root)->point_deleted && 
+        boxpoint.vertex_min[0] <= (*root)->point.x && 
+        boxpoint.vertex_max[0] > (*root)->point.x && 
+        boxpoint.vertex_min[1] <= (*root)->point.y && 
+        boxpoint.vertex_max[1] > (*root)->point.y && 
+        boxpoint.vertex_min[2] <= (*root)->point.z && 
+        boxpoint.vertex_max[2] > (*root)->point.z)
+    {
         (*root)->point_deleted = true;
         tmp_counter += 1;
         if (is_downsample) (*root)->point_downsample_deleted = true;
     }
+
+    //
     Operation_Logger_Type delete_box_log;
     struct timespec Timeout;    
     if (is_downsample) delete_box_log.op = DOWNSAMPLE_DELETE;
         else delete_box_log.op = DELETE_BOX;
     delete_box_log.boxpoint = boxpoint;
+
+    // 左子树递归删除
     if ((Rebuild_Ptr == nullptr) || (*root)->left_son_ptr != *Rebuild_Ptr){
         tmp_counter += Delete_by_range(&((*root)->left_son_ptr), boxpoint, allow_rebuild, is_downsample);
-    } else {
+    } 
+    else {
         pthread_mutex_lock(&working_flag_mutex);
         tmp_counter += Delete_by_range(&((*root)->left_son_ptr), boxpoint, false, is_downsample);
         if (rebuild_flag){
@@ -719,9 +749,12 @@ int KD_TREE<PointType>::Delete_by_range(KD_TREE_NODE ** root,  BoxPointType boxp
         }
         pthread_mutex_unlock(&working_flag_mutex);
     }
+
+    // 右子树递归删除
     if ((Rebuild_Ptr == nullptr) || (*root)->right_son_ptr != *Rebuild_Ptr){
         tmp_counter += Delete_by_range(&((*root)->right_son_ptr), boxpoint, allow_rebuild, is_downsample);
-    } else {
+    } 
+    else {
         pthread_mutex_lock(&working_flag_mutex);
         tmp_counter += Delete_by_range(&((*root)->right_son_ptr), boxpoint, false, is_downsample);
         if (rebuild_flag){
@@ -731,8 +764,13 @@ int KD_TREE<PointType>::Delete_by_range(KD_TREE_NODE ** root,  BoxPointType boxp
         }
         pthread_mutex_unlock(&working_flag_mutex);
     }    
-    Update(*root);     
-    if (Rebuild_Ptr != nullptr && *Rebuild_Ptr == *root && (*root)->TreeSize < Multi_Thread_Rebuild_Point_Num) Rebuild_Ptr = nullptr; 
+
+    Update(*root); // wgh 更新当前节点信息（自下而上更新）
+    if (Rebuild_Ptr != nullptr && 
+        *Rebuild_Ptr == *root && 
+        (*root)->TreeSize < Multi_Thread_Rebuild_Point_Num) Rebuild_Ptr = nullptr; 
+    
+    // wgh 检查是否需要re-balancing当前子树。
     bool need_rebuild = allow_rebuild & Criterion_Check((*root));
     if (need_rebuild) Rebuild(root);
     if ((*root) != nullptr) (*root)->working_flag = false;
@@ -844,8 +882,11 @@ void KD_TREE<PointType>::Add_by_range(KD_TREE_NODE ** root, BoxPointType boxpoin
     return;
 }
 
+// wgh 工具属性，单纯地往tree结构中插入新节点。
 template <typename PointType>
-void KD_TREE<PointType>::Add_by_point(KD_TREE_NODE ** root, PointType point, bool allow_rebuild, int father_axis){     
+void KD_TREE<PointType>::Add_by_point(KD_TREE_NODE ** root, PointType point, bool allow_rebuild, int father_axis)
+{     
+    // wgh 如果已经到达叶子节点，直接插入。
     if (*root == nullptr){
         *root = new KD_TREE_NODE;
         InitTreeNode(*root);
@@ -854,19 +895,24 @@ void KD_TREE<PointType>::Add_by_point(KD_TREE_NODE ** root, PointType point, boo
         Update(*root);
         return;
     }
+
+    // wgh `工作中`标志位置true，同步记录到Logger中。
     (*root)->working_flag = true;
     Operation_Logger_Type add_log;
     struct timespec Timeout;    
     add_log.op = ADD_POINT;
     add_log.point = point;
     Push_Down(*root);
+
+    // wgh 递归插入左子树。
     if (((*root)->division_axis == 0 && point.x < (*root)->point.x) || 
         ((*root)->division_axis == 1 && point.y < (*root)->point.y) || 
         ((*root)->division_axis == 2 && point.z < (*root)->point.z) )
     {
         if ((Rebuild_Ptr == nullptr) || (*root)->left_son_ptr != *Rebuild_Ptr){ 
             Add_by_point(&(*root)->left_son_ptr, point, allow_rebuild, (*root)->division_axis);
-        } else {
+        } 
+        else {
             pthread_mutex_lock(&working_flag_mutex);
             Add_by_point(&(*root)->left_son_ptr, point, false,(*root)->division_axis);
             if (rebuild_flag){
@@ -876,10 +922,13 @@ void KD_TREE<PointType>::Add_by_point(KD_TREE_NODE ** root, PointType point, boo
             }
             pthread_mutex_unlock(&working_flag_mutex);            
         }
-    } else {  
+    }
+    // wgh 递归插入右子树。
+    else {  
         if ((Rebuild_Ptr == nullptr) || (*root)->right_son_ptr != *Rebuild_Ptr){         
             Add_by_point(&(*root)->right_son_ptr, point, allow_rebuild,(*root)->division_axis);
-        } else {
+        } 
+        else {
             pthread_mutex_lock(&working_flag_mutex);
             Add_by_point(&(*root)->right_son_ptr, point, false,(*root)->division_axis);       
             if (rebuild_flag){
@@ -890,8 +939,12 @@ void KD_TREE<PointType>::Add_by_point(KD_TREE_NODE ** root, PointType point, boo
             pthread_mutex_unlock(&working_flag_mutex); 
         }
     }
+
+    // wgh 更新当前节点信息（自下而上），并检查是否需要re-balancing。
     Update(*root);   
-    if (Rebuild_Ptr != nullptr && *Rebuild_Ptr == *root && (*root)->TreeSize < Multi_Thread_Rebuild_Point_Num) Rebuild_Ptr = nullptr; 
+    if (Rebuild_Ptr != nullptr && 
+        *Rebuild_Ptr == *root && 
+        (*root)->TreeSize < Multi_Thread_Rebuild_Point_Num) Rebuild_Ptr = nullptr; 
     bool need_rebuild = allow_rebuild & Criterion_Check((*root));
     if (need_rebuild) Rebuild(root); 
     if ((*root) != nullptr) (*root)->working_flag = false;   
@@ -1068,32 +1121,56 @@ void KD_TREE<PointType>::Search(KD_TREE_NODE * root, int k_nearest, PointType po
 template <typename PointType>
 void KD_TREE<PointType>::Search_by_range(KD_TREE_NODE *root, BoxPointType boxpoint, PointVector & Storage){
     if (root == nullptr) return;
-    Push_Down(root); 
+    Push_Down(root); // wgh 向下更新信息。
+
+    // wgh 当且仅当两个空间有交叉时，才有继续的必要。
     if (boxpoint.vertex_max[0] <= root->node_range_x[0] || boxpoint.vertex_min[0] > root->node_range_x[1]) return;
     if (boxpoint.vertex_max[1] <= root->node_range_y[0] || boxpoint.vertex_min[1] > root->node_range_y[1]) return;
     if (boxpoint.vertex_max[2] <= root->node_range_z[0] || boxpoint.vertex_min[2] > root->node_range_z[1]) return;
-    if (boxpoint.vertex_min[0] <= root->node_range_x[0] && boxpoint.vertex_max[0] > root->node_range_x[1] && boxpoint.vertex_min[1] <= root->node_range_y[0] && boxpoint.vertex_max[1] > root->node_range_y[1] && boxpoint.vertex_min[2] <= root->node_range_z[0] && boxpoint.vertex_max[2] > root->node_range_z[1]){
+
+    // wgh 当Box完全包含了节点所张成的空间时，把该节点subtree上的所有点返回。
+    if (boxpoint.vertex_min[0] <= root->node_range_x[0] && 
+        boxpoint.vertex_max[0] > root->node_range_x[1] && 
+        boxpoint.vertex_min[1] <= root->node_range_y[0] && 
+        boxpoint.vertex_max[1] > root->node_range_y[1] && 
+        boxpoint.vertex_min[2] <= root->node_range_z[0] && 
+        boxpoint.vertex_max[2] > root->node_range_z[1])
+    {
         flatten(root, Storage, NOT_RECORD);
         return;
     }
-    if (boxpoint.vertex_min[0] <= root->point.x && boxpoint.vertex_max[0] > root->point.x && boxpoint.vertex_min[1] <= root->point.y && boxpoint.vertex_max[1] > root->point.y && boxpoint.vertex_min[2] <= root->point.z && boxpoint.vertex_max[2] > root->point.z){
+
+    // wgh 如果当前节点的point被Box包含，记录该point。
+    if (boxpoint.vertex_min[0] <= root->point.x && 
+        boxpoint.vertex_max[0] > root->point.x && 
+        boxpoint.vertex_min[1] <= root->point.y && 
+        boxpoint.vertex_max[1] > root->point.y && 
+        boxpoint.vertex_min[2] <= root->point.z && 
+        boxpoint.vertex_max[2] > root->point.z)
+    {
         if (!root->point_deleted) Storage.push_back(root->point);
     }
+
+    // wgh 递归搜索左子树。
     if ((Rebuild_Ptr == nullptr) || root->left_son_ptr != *Rebuild_Ptr){
         Search_by_range(root->left_son_ptr, boxpoint, Storage);
-    } else {
+    } 
+    else {
         pthread_mutex_lock(&search_flag_mutex);
         Search_by_range(root->left_son_ptr, boxpoint, Storage);
         pthread_mutex_unlock(&search_flag_mutex);
     }
+    // wgh 递归搜索右子树。
     if ((Rebuild_Ptr == nullptr) || root->right_son_ptr != *Rebuild_Ptr){
         Search_by_range(root->right_son_ptr, boxpoint, Storage);
-    } else {
+    } 
+    else {
         pthread_mutex_lock(&search_flag_mutex);
         Search_by_range(root->right_son_ptr, boxpoint, Storage);
         pthread_mutex_unlock(&search_flag_mutex);
     }
-    return;    
+
+    return;
 }
 
 template <typename PointType>

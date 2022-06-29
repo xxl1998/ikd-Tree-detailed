@@ -13,7 +13,7 @@
 - `Nearest_Search()` //支持kNN，ranged-kNN搜索；对该函数的调用被封装在h_share_model()函数中，而h_share_model()又被作为一个函数对象传递给 **class esekf** 的实例 **kf** 中，后者作为前端完成基于ESKF的位姿估算，体现为算法循环中的 **kf.update_iterated_dyn_share_modified()** 语句。
 - `Add_Points()` //添加新的点到ikdtree结构中；用于在当前帧配准完成后，将当前帧中有价值的点插入进来，在专门负责增量式更新的 **map_incremental()** 中被调用。  
 
-详细注释的函数有：`Delete_Point_Boxes()`，`..()`，`..()`。
+上述调用接口中的重要函数已详细注释，包括`Delete_Point_Boxes()`，`Build()`，`Nearest_Search()`，`Add_Points()`。
 
 # ikd-Tree
 **ikd-Tree** is an incremental k-d tree designed for robotic applications. The ikd-Tree incrementally updates a k-d tree with new coming points only, leading to much lower computation time than existing static k-d trees. Besides point-wise operations, the ikd-Tree supports several features such as box-wise operations and down-sampling that are practically useful in robotic applications.
