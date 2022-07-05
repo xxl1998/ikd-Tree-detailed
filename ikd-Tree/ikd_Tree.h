@@ -1,7 +1,7 @@
 #pragma once
-#include <stdio.h>
+#include <stdio.h>      // [wgh] Why so many C style? 
 #include <queue>
-#include <pthread.h>
+#include <pthread.h>    // [wgh] See a C++ stype version in branch 'main_cpp_stype'.
 #include <chrono>
 #include <time.h>
 #include <unistd.h>
