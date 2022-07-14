@@ -1,7 +1,7 @@
 #pragma once
 #include <stdio.h>      // [wgh] Why so many C style? 
 #include <queue>
-#include <pthread.h>    // [wgh] See a C++ stype version in branch 'main_cpp_stype'.
+#include <pthread.h>    // [wgh] See a C++ stype version in branch 'header_only_ikdtree'.
 #include <chrono>
 #include <time.h>
 #include <unistd.h>
@@ -31,7 +31,7 @@ struct ikdTree_PointType
     }
 };
 
-// wgh 定义box（一个box由两个边界点定义）。
+// wgh 定义box（一个box由min&max顶点定义）。
 struct BoxPointType{
     float vertex_min[3];
     float vertex_max[3];
@@ -40,10 +40,9 @@ struct BoxPointType{
 // wgh 枚举ikdtree中的所有操作。
 enum operation_set {ADD_POINT, DELETE_POINT, DELETE_BOX, ADD_BOX, DOWNSAMPLE_DELETE, PUSH_DOWN};
 
-// wgh ？
 enum delete_point_storage_set {NOT_RECORD, DELETE_POINTS_REC, MULTI_THREAD_REC};
 
-// wgh 
+// wgh k近邻缓存队列
 template <typename T>
 class MANUAL_Q{
     private:
