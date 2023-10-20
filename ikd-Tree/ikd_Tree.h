@@ -1,19 +1,19 @@
 #pragma once
-#include <stdio.h>      // [wgh] Why so many C style? 
+#include <stdio.h>      // Why so many C style? 
 #include <queue>
-#include <pthread.h>    // [wgh] See a C++ stype version in branch 'header_only_ikdtree'.
 #include <chrono>
 #include <time.h>
-#include <unistd.h>
 #include <math.h>
 #include <algorithm>
 #include <memory>
+#include <pthread.h>    // Linux/Unix系统接口，c++<std::thread>不能替代之。
+#include <unistd.h>     // Linux/Unix系统中内置头文件,包含一些系统服务函数接口。
 #include <pcl/point_types.h>
 
 #define EPSS 1e-6
 #define Minimal_Unbalanced_Tree_Size 10     // wgh
 #define Multi_Thread_Rebuild_Point_Num 1500 // wgh 需要重置的subtree点数达到此阈值，则用额外线程处理。
-#define DOWNSAMPLE_SWITCH true
+#define DOWNSAMPLE_SWITCH true              // wgh 新增点时，是否启动ikdtree内的downsample
 #define ForceRebuildPercentage 0.2          // wgh 
 #define Q_LEN 1000000                       // wgh 支持的最大队列长度
 
@@ -23,7 +23,6 @@ using namespace std;
 struct ikdTree_PointType
 {
     float x,y,z;
-    // wgh 为什么这里不用const&做形参？
     ikdTree_PointType (float px = 0.0f, float py = 0.0f, float pz = 0.0f){
         x = px;
         y = py;
