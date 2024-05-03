@@ -17,6 +17,8 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 
 
 using PointType = pcl::PointXYZ;
@@ -29,21 +31,39 @@ int main(int argc, char **argv) {
     ros::init(argc, argv, "ikd_tree_test");
     ros::NodeHandle nh;
 
+    // Create a TransformBroadcaster object
+    tf2_ros::TransformBroadcaster broadcaster;
+
+    // Create a TransformStamped message
+    geometry_msgs::TransformStamped transformStamped;
+    // Set the header
+    transformStamped.header.stamp = ros::Time::now();
+    transformStamped.header.frame_id = "map";  // name of the parent frame
+    transformStamped.child_frame_id = "world";    // name of the child frame
+    // Set the transform
+    transformStamped.transform.translation.x = 0.0;  // translation along x-axis
+    transformStamped.transform.translation.y = 0.0;  // translation along y-axis
+    transformStamped.transform.translation.z = 0.0;  // translation along z-axis
+    transformStamped.transform.rotation.x = 0.0;     // quaternion x-component
+    transformStamped.transform.rotation.y = 0.0;     // quaternion y-component
+    transformStamped.transform.rotation.z = 0.0;     // quaternion z-component
+    transformStamped.transform.rotation.w = 1.0;     // quaternion scalar-component
+
     /*** Load point cloud data */
-    pcl::PointCloud<PointType>::Ptr src(new pcl::PointCloud<PointType>);
-    string filename = ROOT_DIR;
-    filename += "materials/hku_demo_pointcloud.pcd";
-    if (pcl::io::loadPCDFile<PointType>(filename, *src) == -1) //* load the file
+    pcl::PointCloud<PointType>::Ptr pc_map(new pcl::PointCloud<PointType>);
+    string root_dir = ROOT_DIR;
+    string pcd_file_map = root_dir + "materials/hku_demo_pointcloud.pcd";
+    if (pcl::io::loadPCDFile<PointType>(pcd_file_map, *pc_map) == -1) //* load the file
     {
         PCL_ERROR ("Couldn't read file.\n");
-        std::cout << filename << std::endl;
+        std::cout << pcd_file_map << std::endl;
         return (-1);
     }
-    printf("Original: %d points are loaded\n", static_cast<int>(src->points.size()));
+    printf("Original: %d points are loaded\n", static_cast<int>(pc_map->points.size()));
 
     /*** Build ikd-Tree */
     auto start = chrono::high_resolution_clock::now();
-    ikdtree.Build((*src).points);
+    ikdtree.Build((*pc_map).points);
     auto end      = chrono::high_resolution_clock::now();
     auto duration = chrono::duration_cast<chrono::microseconds>(end - start).count();
     printf("Building tree takes: %0.3f ms\n", float(duration) / 1e3);
@@ -65,13 +85,15 @@ int main(int argc, char **argv) {
     ros::Publisher pub_pc_map = nh.advertise<sensor_msgs::PointCloud2>(
         "/pc_map", 1);
     sensor_msgs::PointCloud2 msg_pc_map;
-    pcl::toROSMsg(*src, msg_pc_map);
+    pcl::toROSMsg(*pc_map, msg_pc_map);
     msg_pc_map.header.frame_id = "map";
     ros::Rate r(10.0f);
 
     while(ros::ok()){
         msg_pc_map.header.stamp = ros::Time::now();
         pub_pc_map.publish(msg_pc_map);
+        transformStamped.header.stamp = ros::Time::now();
+        broadcaster.sendTransform(transformStamped);
         r.sleep();
         ros::spinOnce();
     }
