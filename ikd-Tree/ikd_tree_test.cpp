@@ -19,11 +19,57 @@
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <Eigen/Eigen>
 
 
 using PointType = pcl::PointXYZ;
 using PointVector = KD_TREE<PointType>::PointVector;
 template class KD_TREE<pcl::PointXYZ>;
+
+#define NUM_MATCH_POINTS    (5)
+typedef Eigen::Vector3d V3D;
+typedef Eigen::Matrix3d M3D;
+typedef Eigen::Vector3f V3F;
+typedef Eigen::Matrix3f M3F;
+
+#define MD(a,b)  Eigen::Matrix<double, (a), (b)>
+#define VD(a)    Eigen::Matrix<double, (a), 1>
+#define MF(a,b)  Eigen::Matrix<float, (a), (b)>
+#define VF(a)    Eigen::Matrix<float, (a), 1>
+
+template<typename T>
+bool esti_plane(Eigen::Matrix<T, 4, 1> &pca_result, const PointVector &point, const T &threshold)
+{
+    Eigen::Matrix<T, NUM_MATCH_POINTS, 3> A;
+    Eigen::Matrix<T, NUM_MATCH_POINTS, 1> b;
+    A.setZero();
+    b.setOnes();
+    b *= -1.0f;
+
+    for (int j = 0; j < NUM_MATCH_POINTS; j++)
+    {
+        A(j,0) = point[j].x;
+        A(j,1) = point[j].y;
+        A(j,2) = point[j].z;
+    }
+
+    Eigen::Matrix<T, 3, 1> normvec = A.colPivHouseholderQr().solve(b);
+
+    T n = normvec.norm();
+    pca_result(0) = normvec(0) / n;
+    pca_result(1) = normvec(1) / n;
+    pca_result(2) = normvec(2) / n;
+    pca_result(3) = 1.0 / n;
+
+    for (int j = 0; j < NUM_MATCH_POINTS; j++)
+    {
+        if (fabs(pca_result(0) * point[j].x + pca_result(1) * point[j].y + pca_result(2) * point[j].z + pca_result(3)) > threshold)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 KD_TREE<PointType> ikdtree;
 int main(int argc, char **argv) {
@@ -77,10 +123,25 @@ int main(int argc, char **argv) {
     target.y = 0.0f;
     target.z = 5.0f;
     start = chrono::high_resolution_clock::now();
-    ikdtree.Nearest_Search(target, 5, search_result, PointDist);
+    ikdtree.Nearest_Search(target, NUM_MATCH_POINTS, search_result, PointDist);
     end = chrono::high_resolution_clock::now();
     duration = chrono::duration_cast<chrono::microseconds>(end - start).count();
     printf("Search nearest point time cost is %0.3f ms\n",float(duration)/1e3);
+
+    VF(4) pabcd;
+    PointType point_world = target;
+    PointType point_body = target;
+    V3D p_body(point_body.x, point_body.y, point_body.z);
+    if (esti_plane(pabcd, search_result, 0.1f))
+    {
+        float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
+        float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
+
+        if (s > 0.9)
+        {
+            printf("fine plane\n");
+        }
+    }
 
     ros::Publisher pub_pc_map = nh.advertise<sensor_msgs::PointCloud2>(
         "/pc_map", 1);
