@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     /*** Load point cloud data */
     pcl::PointCloud<PointType>::Ptr pc_map(new pcl::PointCloud<PointType>);
     string root_dir = ROOT_DIR;
-    string pcd_file_map = root_dir + "materials/hku_demo_pointcloud.pcd";
+    string pcd_file_map = root_dir + "materials/map.pcd";
     if (pcl::io::loadPCDFile<PointType>(pcd_file_map, *pc_map) == -1) //* load the file
     {
         PCL_ERROR ("Couldn't read file.\n");
@@ -106,6 +106,26 @@ int main(int argc, char **argv) {
         return (-1);
     }
     printf("Original: %d points are loaded\n", static_cast<int>(pc_map->points.size()));
+
+    pcl::PointCloud<PointType>::Ptr pc_scan_body(new pcl::PointCloud<PointType>);
+    string pcd_file_scan_body = root_dir + "materials/scan_body.pcd";
+    if (pcl::io::loadPCDFile<PointType>(pcd_file_scan_body, *pc_scan_body) == -1) //* load the file
+    {
+        PCL_ERROR ("Couldn't read file.\n");
+        std::cout << pcd_file_scan_body << std::endl;
+        return (-1);
+    }
+    printf("Original: %d points are loaded\n", static_cast<int>(pc_scan_body->points.size()));
+
+    pcl::PointCloud<PointType>::Ptr pc_scan_world(new pcl::PointCloud<PointType>);
+    string pcd_file_scan_world = root_dir + "materials/scan_world.pcd";
+    if (pcl::io::loadPCDFile<PointType>(pcd_file_scan_world, *pc_scan_world) == -1) //* load the file
+    {
+        PCL_ERROR ("Couldn't read file.\n");
+        std::cout << pcd_file_scan_world << std::endl;
+        return (-1);
+    }
+    printf("Original: %d points are loaded\n", static_cast<int>(pc_scan_world->points.size()));
 
     /*** Build ikd-Tree */
     auto start = chrono::high_resolution_clock::now();

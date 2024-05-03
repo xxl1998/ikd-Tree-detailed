@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /map1
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz/Selection
@@ -52,10 +53,19 @@ Visualization Manager:
       Reference Frame: <Fixed Frame>
       Value: true
     - Alpha: 1
+      Class: rviz/Axes
+      Enabled: true
+      Length: 10
+      Name: Axes
+      Radius: 0.5
+      Reference Frame: <Fixed Frame>
+      Show Trail: false
+      Value: true
+    - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 95.8145751953125
-        Min Value: -22.059383392333984
+        Max Value: 102.43492126464844
+        Min Value: -5.3967695236206055
         Value: true
       Axis: Z
       Channel Name: intensity
@@ -107,7 +117,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 148.8374481201172
+      Distance: 110.16162109375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -115,17 +125,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 27.509069442749023
+        Y: 4.254180431365967
+        Z: 4.232112407684326
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8503971099853516
+      Pitch: 0.6203973293304443
       Target Frame: <Fixed Frame>
-      Yaw: 4.2104034423828125
+      Yaw: 1.9253994226455688
     Saved: ~
 Window Geometry:
   Displays:
