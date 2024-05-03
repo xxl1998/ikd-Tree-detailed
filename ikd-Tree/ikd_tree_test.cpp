@@ -15,6 +15,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <jsk_recognition_msgs/PolygonArray.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -175,6 +176,28 @@ int main(int argc, char **argv) {
     pcl::toROSMsg(*pc_scan_world, msg_pc_scan_world);
     msg_pc_scan_world.header.frame_id = "map";
 
+    ros::Publisher pub_plane = nh.advertise<jsk_recognition_msgs::PolygonArray>(
+        "/plane", 10);
+    jsk_recognition_msgs::PolygonArray msg_polygon_array;
+    geometry_msgs::PolygonStamped polygon_s;
+    geometry_msgs::Point32 point;
+    point.x = 0.0;
+    point.y = 0.0;
+    point.z = 0.0;
+    polygon_s.polygon.points.push_back(point);
+    point.x = 10.0;
+    point.y = 0.0;
+    point.z = 0.0;
+    polygon_s.polygon.points.push_back(point);
+    point.x = 10.0;
+    point.y = 10.0;
+    point.z = 0.0;
+    polygon_s.polygon.points.push_back(point);
+    polygon_s.header.frame_id = "map";
+    polygon_s.header.stamp = ros::Time::now();
+    msg_polygon_array.polygons.push_back(polygon_s);
+    msg_polygon_array.header.frame_id = "map";
+
     ros::Rate r(10.0f);
 
     while(ros::ok()){
@@ -182,6 +205,8 @@ int main(int argc, char **argv) {
         pub_pc_map.publish(msg_pc_map);
         msg_pc_scan_world.header.stamp = ros::Time::now();
         pub_pc_scan_world.publish(msg_pc_scan_world);
+        msg_polygon_array.header.stamp = ros::Time::now();
+        pub_plane.publish(msg_polygon_array);
         transformStamped.header.stamp = ros::Time::now();
         broadcaster.sendTransform(transformStamped);
         r.sleep();
