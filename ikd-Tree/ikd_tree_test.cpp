@@ -136,34 +136,6 @@ int main(int argc, char **argv) {
     printf("Building tree takes: %0.3f ms\n", float(duration) / 1e3);
     printf("# of valid points: %d \n", ikdtree.validnum());
 
-    // Nearest Search
-    PointVector search_result;
-    vector<float> PointDist;
-    PointType target;
-    target.x = 0.0f;
-    target.y = 0.0f;
-    target.z = 5.0f;
-    start = chrono::high_resolution_clock::now();
-    ikdtree.Nearest_Search(target, NUM_MATCH_POINTS, search_result, PointDist);
-    end = chrono::high_resolution_clock::now();
-    duration = chrono::duration_cast<chrono::microseconds>(end - start).count();
-    printf("Search nearest point time cost is %0.3f ms\n",float(duration)/1e3);
-
-    VF(4) pabcd;
-    PointType point_world = target;
-    PointType point_body = target;
-    V3D p_body(point_body.x, point_body.y, point_body.z);
-    if (esti_plane(pabcd, search_result, 0.1f))
-    {
-        float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
-        float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
-
-        if (s > 0.9)
-        {
-            printf("fine plane\n");
-        }
-    }
-
     ros::Publisher pub_pc_map = nh.advertise<sensor_msgs::PointCloud2>(
         "/pc_map", 1);
     sensor_msgs::PointCloud2 msg_pc_map;
@@ -200,7 +172,46 @@ int main(int argc, char **argv) {
 
     ros::Rate r(10.0f);
 
+    // scan point size, also loop number
+    unsigned int scan_points_size = pc_scan_world->points.size();
+    std::cout << "scan_points_size: " << scan_points_size << std::endl;
+
+    // save all nearest search result
+    std::vector<PointVector>  Nearest_Points;
+    Nearest_Points.resize(scan_points_size);
+
+    bool point_selected_surf[10000] = {0};
+
     while(ros::ok()){
+        for (int i = 0; i < scan_points_size; i++)
+        {
+            PointType &point_body  = pc_scan_body->points[i];
+            PointType &point_world = pc_scan_world->points[i];
+            V3D p_body(point_body.x, point_body.y, point_body.z);
+            PointVector &points_near = Nearest_Points[i];
+            std::vector<float> pointSearchSqDis(NUM_MATCH_POINTS);
+
+            /** Find the closest surfaces in the map **/
+            start = chrono::high_resolution_clock::now();
+            ikdtree.Nearest_Search(point_world, NUM_MATCH_POINTS, points_near, pointSearchSqDis);
+            end = chrono::high_resolution_clock::now();
+            duration = chrono::duration_cast<chrono::microseconds>(end - start).count();
+            printf("Search nearest point time cost is %0.3f ms\n",float(duration)/1e3);
+            point_selected_surf[i] = points_near.size() < NUM_MATCH_POINTS ? false : pointSearchSqDis[NUM_MATCH_POINTS - 1] > 5 ? false : true;
+            if (!point_selected_surf[i]) continue;
+
+            VF(4) pabcd;
+            point_selected_surf[i] = false;
+            if (esti_plane(pabcd, points_near, 0.1f))
+            {
+                float pd2 = pabcd(0) * point_world.x + pabcd(1) * point_world.y + pabcd(2) * point_world.z + pabcd(3);
+                float s = 1 - 0.9 * fabs(pd2) / sqrt(p_body.norm());
+                if (s > 0.9)
+                {
+                    point_selected_surf[i] = true;
+                }
+            }
+        }
         msg_pc_map.header.stamp = ros::Time::now();
         pub_pc_map.publish(msg_pc_map);
         msg_pc_scan_world.header.stamp = ros::Time::now();
