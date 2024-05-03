@@ -168,11 +168,20 @@ int main(int argc, char **argv) {
     sensor_msgs::PointCloud2 msg_pc_map;
     pcl::toROSMsg(*pc_map, msg_pc_map);
     msg_pc_map.header.frame_id = "map";
+
+    ros::Publisher pub_pc_scan_world = nh.advertise<sensor_msgs::PointCloud2>(
+        "/pc_scan_world", 1);
+    sensor_msgs::PointCloud2 msg_pc_scan_world;
+    pcl::toROSMsg(*pc_scan_world, msg_pc_scan_world);
+    msg_pc_scan_world.header.frame_id = "map";
+
     ros::Rate r(10.0f);
 
     while(ros::ok()){
         msg_pc_map.header.stamp = ros::Time::now();
         pub_pc_map.publish(msg_pc_map);
+        msg_pc_scan_world.header.stamp = ros::Time::now();
+        pub_pc_scan_world.publish(msg_pc_scan_world);
         transformStamped.header.stamp = ros::Time::now();
         broadcaster.sendTransform(transformStamped);
         r.sleep();

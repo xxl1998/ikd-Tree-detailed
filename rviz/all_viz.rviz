@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /map1
       Splitter Ratio: 0.5
     Tree Height: 719
   - Class: rviz/Selection
@@ -82,9 +81,37 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.10000000149011612
+      Size (m): 0.05000000074505806
       Style: Spheres
       Topic: /pc_map
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 37.0379753112793
+        Min Value: -42.68815231323242
+        Value: true
+      Axis: Y
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: AxisColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: scan_world
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.15000000596046448
+      Style: Flat Squares
+      Topic: /pc_scan_world
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -117,7 +144,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 110.16162109375
+      Distance: 60.521018981933594
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -125,17 +152,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 27.509069442749023
-        Y: 4.254180431365967
-        Z: 4.232112407684326
+        X: 14.637565612792969
+        Y: 5.643042087554932
+        Z: 4.272531986236572
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6203973293304443
+      Pitch: 0.6147972345352173
       Target Frame: <Fixed Frame>
-      Yaw: 1.9253994226455688
+      Yaw: 1.3803999423980713
     Saved: ~
 Window Geometry:
   Displays:
