@@ -12,6 +12,10 @@
 #include "pcl/point_cloud.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 
 
 using PointType = pcl::PointXYZ;
@@ -38,6 +42,10 @@ void colorize( const PointVector &pc, pcl::PointCloud<pcl::PointXYZRGB> &pc_colo
 
 KD_TREE<PointType> ikdtree;
 int main(int argc, char **argv) {
+    // Initialize ROS node
+    ros::init(argc, argv, "ikd_tree_test");
+    ros::NodeHandle nh;
+
     /*** Load point cloud data */
     pcl::PointCloud<PointType>::Ptr src(new pcl::PointCloud<PointType>);
     string filename = ROOT_DIR;
@@ -83,6 +91,20 @@ int main(int argc, char **argv) {
     viewer0.addPointCloud<pcl::PointXYZRGB>(searched_colored, "searched");
     viewer0.setCameraPosition(-5, 30, 175,  0, 0, 0, 0.2, -1.0, 0.2);
     viewer0.setSize(1600, 900);
+
+    ros::Publisher pub_pc_map = nh.advertise<sensor_msgs::PointCloud2>(
+        "/pc_map", 1);
+    sensor_msgs::PointCloud2 msg_pc_map;
+    pcl::toROSMsg(*src, msg_pc_map);
+    msg_pc_map.header.frame_id = "map";
+    ros::Rate r(10.0f);
+
+    while(ros::ok()){
+        msg_pc_map.header.stamp = ros::Time::now();
+        pub_pc_map.publish(msg_pc_map);
+        r.sleep();
+        ros::spinOnce();
+    }
 
     while (!viewer0.wasStopped() ){
         viewer0.spinOnce();
