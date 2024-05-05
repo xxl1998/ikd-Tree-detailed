@@ -56,6 +56,12 @@ bool esti_plane(Eigen::Matrix<T, 4, 1> &pca_result, const PointVector &point, co
 
     Eigen::Matrix<T, 3, 1> normvec = A.colPivHouseholderQr().solve(b);
 
+    Eigen::IOFormat matrix_print_format(4, 0, ", ", "\n", "[", "]");
+    std::string sep = "\n----------------------------------------\n";
+    std::cout << "A:" << std::endl << A.format(matrix_print_format) << sep;
+    std::cout << "b:" << std::endl << b.format(matrix_print_format) << sep;
+    std::cout << "x:" << std::endl << normvec.format(matrix_print_format) << sep;
+
     T n = normvec.norm();
     pca_result(0) = normvec(0) / n;
     pca_result(1) = normvec(1) / n;
@@ -211,6 +217,8 @@ int main(int argc, char **argv) {
                     point_selected_surf[i] = true;
                 }
             }
+            r.sleep();
+        ros::spinOnce();
         }
         msg_pc_map.header.stamp = ros::Time::now();
         pub_pc_map.publish(msg_pc_map);
