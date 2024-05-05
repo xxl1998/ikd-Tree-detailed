@@ -40,5 +40,5 @@ catkin_package(
 add_executable(ikd_tree_test ikd-Tree/ikd_tree_test.cpp ikd-Tree/ikd_Tree.cpp)
 target_link_libraries(ikd_tree_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(qr_solve src/qr_solve.c)
+add_executable(qr_solve src/qr_solve.cpp)
 target_link_libraries(qr_solve ${OpenCL_LIBRARIES})

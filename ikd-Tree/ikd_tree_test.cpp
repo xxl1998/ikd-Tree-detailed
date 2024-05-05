@@ -54,7 +54,11 @@ bool esti_plane(Eigen::Matrix<T, 4, 1> &pca_result, const PointVector &point, co
         A(j,2) = point[j].z;
     }
 
+    auto start = std::chrono::high_resolution_clock::now();
     Eigen::Matrix<T, 3, 1> normvec = A.colPivHouseholderQr().solve(b);
+    auto end      = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    printf("Solve Ax=b takes: %0.3f ms\n", float(duration) / 1e3);
 
     Eigen::IOFormat matrix_print_format(4, 0, ", ", "\n", "[", "]");
     std::string sep = "\n----------------------------------------\n";
