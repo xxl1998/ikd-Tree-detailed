@@ -2,7 +2,11 @@
 #define PROGRAM_FILE "qr_solve.cl"
 #define KERNEL_FUNC "qr_solve"
 
+// dimension of matrix
 #define MATRIX_DIM 5
+// number of matrices for compute once
+#define MATRIX_NUM 2
+#define MATRIX_TOTAL_ROWS (MATRIX_DIM * MATRIX_NUM)
 #define CL_TARGET_OPENCL_VERSION 120
 
 #include <math.h>
@@ -117,8 +121,15 @@ cl_program build_program(cl_context ctx, cl_device_id dev, const char* filename)
    return program;
 }
 
-float a_mat[MATRIX_DIM][MATRIX_DIM], q_mat[MATRIX_DIM][MATRIX_DIM],
-      r_mat[MATRIX_DIM][MATRIX_DIM], check_mat[MATRIX_DIM][MATRIX_DIM];
+// 5 columns, 5*n rows.  n is marix number
+float a_mat[MATRIX_DIM * MATRIX_NUM][MATRIX_DIM];
+float q_mat[MATRIX_DIM * MATRIX_NUM][MATRIX_DIM];
+float r_mat[MATRIX_DIM * MATRIX_NUM][MATRIX_DIM];
+float check_mat[MATRIX_DIM * MATRIX_NUM][MATRIX_DIM];
+// Vector b = -1
+float b_vec[MATRIX_DIM * MATRIX_NUM];
+// Solution vector x
+float x_vec[MATRIX_DIM * MATRIX_NUM];
 
 int main() {
 
@@ -128,27 +139,42 @@ int main() {
    cl_command_queue queue;
    cl_program program;
    cl_kernel kernel;
-   size_t global_size, local_size;
    cl_int err, i, j, k, check;
 
    /* Data and buffers */
    cl_mem a_buffer, q_buffer, p_buffer, prod_buffer, b_buffer, x_buffer;
 
-   float a_buf[MATRIX_DIM * MATRIX_DIM] = {-2.276, 0.4507, 0.0329, 0, 0, \
+   // for A matrix init
+   float a_buf[MATRIX_DIM * MATRIX_TOTAL_ROWS] = {-2.276, 0.4507, 0.0329, 0, 0, \
                                           -2.273, 0.5457, 0.08334, 0, 0, \
                                           -2.71, 0.2871, -0.05081, 0, 0, \
                                           -2.871, 0.5307, 0.08712, 0, 0, \
-                                          -2.337, 0.2689, -0.1338, 0, 0 };
-   float b_vec[MATRIX_DIM] = {-1.0, -1.0, -1.0, -1.0, -1.0}; // Example vector b
-   float x_vec[MATRIX_DIM]; // Solution vector x
+                                          -2.337, 0.2689, -0.1338, 0, 0, \
+                                          9.775, -0.2636, -0.1972, 0, 0, \
+                                          9.235, -0.2776, -0.1902, 0, 0, \
+                                          9.746,  0.2444,  -0.193, 0, 0, \
+                                          9.26,  0.2579, -0.1672, 0, 0, \
+                                          9.731, -0.7539, -0.2024};
 
    /* Initialize A matrix */
-   for(i=0; i<MATRIX_DIM; i++) {
+   for(i=0; i<MATRIX_TOTAL_ROWS; i++) {
       for(j=0; j<MATRIX_DIM; j++) {
          a_mat[i][j] = a_buf[i * MATRIX_DIM + j];
          check_mat[i][j] = 0.0f;
       }
    }
+   printf("A:\n");
+   printMatrix(a_mat, MATRIX_TOTAL_ROWS, MATRIX_DIM);
+
+   /* Initialize B vector */
+   for(i=0; i<sizeof(b_vec)/sizeof(b_vec[0]); i++) {
+      b_vec[i] = -1.0f;
+   }
+
+   // other init, set to zero
+   memset(q_mat, 0, sizeof(q_mat));
+   memset(r_mat, 0, sizeof(r_mat));
+   memset(check_mat, 0, sizeof(check_mat));
 
    /* Create a device and context */
    device = create_device();
@@ -214,10 +240,13 @@ int main() {
    };
 
    /* Enqueue kernel */
-   global_size = MATRIX_DIM;
-   local_size = MATRIX_DIM;
-   err = clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &global_size,
-         &local_size, 0, NULL, NULL);
+   size_t global_size[2], local_size[2];
+   global_size[0] = MATRIX_DIM;
+   global_size[1] = MATRIX_NUM; //MATRIX_DIM * MATRIX_NUM;
+   local_size[0] = MATRIX_DIM;
+   local_size[1] = 1;
+   err = clEnqueueNDRangeKernel(queue, kernel, 2, NULL, global_size,
+         local_size, 0, NULL, NULL);
    if(err != CL_SUCCESS) {
       printf("Error code: %d\n", err);
       perror("Couldn't enqueue the kernel.");
@@ -265,15 +294,21 @@ int main() {
       printf("QR decomposition check failed.\n");
 
    printf("A:\n");
-   printMatrix(a_mat, MATRIX_DIM, MATRIX_DIM);
+   printMatrix(a_mat, MATRIX_TOTAL_ROWS, MATRIX_DIM);
    printf("\nQ:\n");
-   printMatrix(q_mat, MATRIX_DIM, MATRIX_DIM);
+   printMatrix(q_mat, MATRIX_TOTAL_ROWS, MATRIX_DIM);
    printf("\nR:\n");
-   printMatrix(r_mat, MATRIX_DIM, MATRIX_DIM);
+   printMatrix(r_mat, MATRIX_TOTAL_ROWS, MATRIX_DIM);
    printf("\ncheck:\n");
-   printMatrix(check_mat, MATRIX_DIM, MATRIX_DIM);
+   printMatrix(check_mat, MATRIX_TOTAL_ROWS, MATRIX_DIM);
+   // x[4] and x[5] have no effect
+   for(int n=0; n<MATRIX_NUM; n++){
+      x_vec[n*MATRIX_DIM +3]=0.0f;
+      x_vec[n*MATRIX_DIM +4]=0.0f;
+   }
    printf("\nX:\n");
    printVector(x_vec, 3);
+   printVector(x_vec + MATRIX_DIM, 3);
 
    /* Deallocate resources */
    clReleaseMemObject(a_buffer);
