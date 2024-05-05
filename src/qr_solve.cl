@@ -11,12 +11,12 @@ __kernel void qr_solve(__local float *u_vec, __global float *a_mat,
    int id0 = get_global_id(0);
    int id1 = get_global_id(1);
    int num_cols = get_global_size(0);
-   printf("id:%d num_cols:%d id0:%d id1:%d\n", id, num_cols, id0, id1);
+   // printf("id:%d num_cols:%d id0:%d id1:%d\n", id, num_cols, id0, id1);
    int rows = get_local_size(0);
    int row_index = id + id1 * rows;
    int r_offset = id1 * rows;
    int e_offset = id1 * rows * num_cols;
-   printf("rows:%d row_index:%d e_offset:%d r_offset:%d\n", rows, row_index, e_offset, r_offset);
+   // printf("rows:%d row_index:%d e_offset:%d r_offset:%d\n", rows, row_index, e_offset, r_offset);
 
    /* Load first column into local memory as u vector */
    u_vec[id] = a_mat[id*num_cols + e_offset];
