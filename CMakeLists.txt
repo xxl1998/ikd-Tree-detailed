@@ -21,11 +21,13 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
+find_package(OpenCL REQUIRED)
 
 include_directories(
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIR}
     ${PCL_INCLUDE_DIRS}
+    ${OpenCL_INCLUDE_DIRS}
     ikd-Tree
 )
 
@@ -37,3 +39,6 @@ catkin_package(
 
 add_executable(ikd_tree_test ikd-Tree/ikd_tree_test.cpp ikd-Tree/ikd_Tree.cpp)
 target_link_libraries(ikd_tree_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(qr_solve src/qr_solve.c)
+target_link_libraries(qr_solve ${OpenCL_LIBRARIES})
